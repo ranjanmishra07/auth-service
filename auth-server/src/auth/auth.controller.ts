@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Request, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Request, UseGuards, Logger } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../user/dto/user.dto';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -6,6 +6,8 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(private authService: AuthService) {}
 
   @Post('signup')
@@ -16,6 +18,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 400, description: 'Bad request.' })
   async signUp(@Body() createUserDto: CreateUserDto) {
+    this.logger.log(`Received sign-up request for email: ${createUserDto.email}`);
     return this.authService.signUp(createUserDto);
   }
 
@@ -33,6 +36,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   async signIn(@Request() req): Promise<{ accessToken: string; email: string }> {
     const user: CreateUserDto = req.body;
+    this.logger.log(`Received sign-in request for email: ${user.email}`);
     return this.authService.login(user);
   }
 }
