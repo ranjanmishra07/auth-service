@@ -1,46 +1,44 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { UserService } from '../user/user.service';
-import { JwtService } from '@nestjs/jwt';
-import { CreateUserDto, ISingupResponse } from 'src/user/dto/user.dto';
-import { UserDocument } from 'src/user/schemas/user.chema';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model } from 'mongoose';
+import * as bcrypt from 'bcrypt';
+import { User, UserDocument } from './schemas/user.chema';
+import { CreateUserDto } from './dto/user.dto';
 
 @Injectable()
-export class AuthService {
+export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
-    private userService: UserService,
-    private jwtService: JwtService,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectConnection() private connection: Connection
+
   ) {}
 
+  async create(createUserDto: CreateUserDto): Promise<UserDocument> {
+    this.logger.log(`Creating user with email: ${createUserDto.email}`);
+    const { name, email, password } = createUserDto;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new this.userModel({ name, email, password: hashedPassword });
+    this.logger.log(`User created with ID: ${user._id.toString()}`);
 
-  async login(user: CreateUserDto) {
-    const userResponse = await this.userService.validateUser(user.email, user.password) as UserDocument;
-    if (!userResponse) {
-      throw new UnauthorizedException();
+    return user.save();
+  }
+
+  async validateUser(email: string, password: string): Promise<User | null> {
+    this.logger.log(`Validating user with email: ${email}`);
+    const user = await this.userModel.findOne({ email });
+    if (user && (await bcrypt.compare(password, user.password))) {
+      this.logger.log(`User validated successfully: ${user._id}`);
+      return user;
     }
-    const payload = { name: user.name, email: user.email, id: userResponse._id.toString()};
-    return this.signJwtToken(payload as UserDocument);
+    this.logger.warn(`User validation failed for email: ${email}`);
+    return null;
   }
 
-   signJwtToken(user: UserDocument) {
-    const payload = { name: user.name, email: user.email, id: user.id};
-    return {
-      accessToken: this.jwtService.sign(payload),
-      email: user.email
-    };
-  }
-
-  async signUp(createUserDto: CreateUserDto): Promise<ISingupResponse> {
-    // Check if the user already exists
-    const existingUser = await this.userService.findByEmail(createUserDto.email);
-    if (existingUser) {
-      throw new BadRequestException('User with this email already exists');
-     }
-
-    // Create a new user
-    const user = await this.userService.create(createUserDto);
-    
-    const payload = { name: user.name, email: user.email, id: user._id.toString()};
-    const {accessToken} = this.signJwtToken(payload as UserDocument);
-    return { ...payload, accessToken };
+  async findByEmail(email: string): Promise<User | null> {
+    this.logger.log(`Finding user by email: ${email}`);
+    return this.userModel.findOne({ email });
   }
 }
+
