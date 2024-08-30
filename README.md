@@ -9,7 +9,11 @@ $ npm start:dev
 It will run on port 3001
 
 Api's
-POST localhost:3001/auth/signin
+1. GET localhost:3001 - this is secured with jwt token
+   Request -> Authorization Header = Bearer {{token}}
+   Response -> 200
+
+2. POST localhost:3001/auth/signin
 Request body -> {
     "name": "ranjan",
     "email": "ranjan2@gmail.com",
@@ -21,7 +25,7 @@ Response -> {
     "email": "ranjan2@gmail.com"
 }
 
-POST localhost:3001/auth/signup
+3. POST localhost:3001/auth/signup
 Request body -> {
     "email": "ranjan2@gmail.com",
     "password": "testpass@123%%"
