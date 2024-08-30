@@ -1,5 +1,5 @@
+import { Logger } from '@nestjs/common';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { IsString, Matches, MinLength } from 'class-validator';
 import { Document } from 'mongoose';
 
 export type UserDocument = User & Document;
@@ -13,12 +13,20 @@ export class User {
   email: string;
 
   @Prop({ required: true })
-  // @IsString()
-  // @MinLength(8)
-  // @Matches(/.*[A-Za-z].*/, { message: 'Password must contain at least one letter' })
-  // @Matches(/.*\d.*/, { message: 'Password must contain at least one number' })
-  // @Matches(/.*\W.*/, { message: 'Password must contain at least one special character' })
   password: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+// Mongoose middleware for logging
+UserSchema.pre<UserDocument>('save', function(next) {
+  const logger = new Logger('UserModel');
+  logger.log(`Saving user document with email: ${this.email}`);
+  next();
+});
+
+UserSchema.post<UserDocument>('save', function(doc, next) {
+  const logger = new Logger('UserModel');
+  logger.log(`User document saved successfully with email: ${doc.email}`);
+  next();
+});
